@@ -1,0 +1,16 @@
+# Python virtual environments and caches
+.venv/
+.venv.setup.*/
+__pycache__/
+*.py[cod]
+
+# Generated scan data and processing output
+RAW/
+TMP/
+DONE/
+
+# Editor and OS metadata
+.vscode/
+.idea/
+.DS_Store
+*~
