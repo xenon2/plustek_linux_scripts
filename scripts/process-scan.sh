@@ -2,6 +2,10 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname -- "$SCRIPT_DIR")"
+cd "$PROJECT_ROOT"
+
 #
 # ==========================================
 # TWEAKABLE PARAMETERS
@@ -80,7 +84,7 @@ FINAL="$DONE_DIR/scan-${NUM}.tif"
 # validation
 #
 
-[[ -x "$PYTHON" ]] || die "missing Python executable: $PYTHON (run ./setup.sh)"
+[[ -x "$PYTHON" ]] || die "missing Python executable: $PYTHON (run ./scripts/setup.sh)"
 [[ -f "$RGB" ]] || die "missing RGB file: $RGB"
 [[ "$IR_ENABLED" == "yes" || "$IR_ENABLED" == "no" ]] || \
     die "IR_ENABLED must be yes or no"
@@ -90,7 +94,7 @@ command -v tiffcrop >/dev/null 2>&1 || \
 if [[ "$IR_ENABLED" == "no" ]]; then
     log "start rgb=$RGB ir=disabled"
     log "1/2 apply gamma=${GAMMA_VALUE}"
-    "$PYTHON" gamma22.py "$RGB" "$GAMMA" --gamma "$GAMMA_VALUE"
+    "$PYTHON" "$SCRIPT_DIR/gamma22.py" "$RGB" "$GAMMA" --gamma "$GAMMA_VALUE"
 
     log "2/2 mirror horizontally"
     tiffcrop -F horiz "$GAMMA" "$FINAL"
@@ -109,7 +113,7 @@ log "start rgb=$RGB ir=$IR"
 
 log "1/5 detect defects"
 
-"$PYTHON" detect_scratch.py \
+"$PYTHON" "$SCRIPT_DIR/detect_scratch.py" \
     "$IR" \
     "$MASK" \
     --channel "$MASK_CHANNEL" \
@@ -124,7 +128,7 @@ if [[ "$AUTO_OFFSET" == "yes" ]]; then
     log "2/5 estimate RGB/IR offset"
 
     read -r MASK_OFFSET_X MASK_OFFSET_Y < <(
-        "$PYTHON" estimate_offset.py \
+        "$PYTHON" "$SCRIPT_DIR/estimate_offset.py" \
             "$RGB" \
             "$IR" \
             --channel "$MASK_CHANNEL" \
@@ -142,7 +146,7 @@ fi
 
 log "3/5 inpaint"
 
-"$PYTHON" inpaint.py \
+"$PYTHON" "$SCRIPT_DIR/inpaint.py" \
     "$RGB" \
     "$MASK" \
     "$CLEAN" \
@@ -158,7 +162,7 @@ log "3/5 inpaint"
 
 log "4/5 apply gamma=${GAMMA_VALUE}"
 
-"$PYTHON" gamma22.py \
+"$PYTHON" "$SCRIPT_DIR/gamma22.py" \
     "$CLEAN" \
     "$GAMMA" \
     --gamma "$GAMMA_VALUE"

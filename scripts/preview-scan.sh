@@ -2,6 +2,10 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname -- "$SCRIPT_DIR")"
+cd "$PROJECT_ROOT"
+
 PYTHON=".venv/bin/python"
 PREVIEW_DIR="TMP"
 
@@ -22,17 +26,17 @@ trap 'rc=$?; log "ERROR: command failed (exit=$rc)" >&2; exit "$rc"' ERR
 
 mkdir -p "$PREVIEW_DIR"
 
-[[ -x "$PYTHON" ]] || die "missing Python executable: $PYTHON (run ./setup.sh)"
-[[ -x ./raw-scan.sh ]] || die "missing scan script: ./raw-scan.sh"
+[[ -x "$PYTHON" ]] || die "missing Python executable: $PYTHON (run ./scripts/setup.sh)"
+[[ -x "$SCRIPT_DIR/raw-scan.sh" ]] || die "missing scan script: $SCRIPT_DIR/raw-scan.sh"
 
 RAW="$PREVIEW_DIR/preview-raw.tif"
 OUTPUT="$PREVIEW_DIR/preview.jpg"
 rm -f "$RAW" "$OUTPUT"
 
-./raw-scan.sh --preview
+"$SCRIPT_DIR/raw-scan.sh" --preview
 
 log "convert negative, auto-level ${BLACK_PERCENTILE}/${WHITE_PERCENTILE}, gamma=${GAMMA_VALUE}"
-"$PYTHON" preview.py "$RAW" "$OUTPUT" \
+"$PYTHON" "$SCRIPT_DIR/preview.py" "$RAW" "$OUTPUT" \
     --gamma "$GAMMA_VALUE" \
     --exposure "$PREVIEW_EXPOSURE" \
     --black-percentile "$BLACK_PERCENTILE" \

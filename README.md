@@ -26,7 +26,7 @@ Install the remaining system dependencies and create the Python environment:
 
 ```bash
 sudo apt install python3-venv libtiff-tools
-./setup.sh
+./scripts/setup.sh
 ```
 
 The setup script installs compatible NumPy and OpenCV versions in `.venv` and verifies the required image codecs.
@@ -53,14 +53,14 @@ Disable infrared for black-and-white film. The next frame number is determined f
 Scan and process frame 1:
 
 ```bash
-./raw-scan.sh 1
-./process-scan.sh 1
+./scripts/raw-scan.sh 1
+./scripts/process-scan.sh 1
 ```
 
 Create a preview:
 
 ```bash
-./preview-scan.sh
+./scripts/preview-scan.sh
 ```
 
 ## Processing
@@ -82,7 +82,7 @@ The scanner's output is horizontally mirrored, so mirroring is applied only to t
 
 ## Configuration
 
-Scanner geometry and defaults are configured near the top of `raw-scan.sh`. Processing parameters are configured near the top of `process-scan.sh`, including:
+Scanner geometry and defaults are configured near the top of `scripts/raw-scan.sh`. Processing parameters are configured near the top of `scripts/process-scan.sh`, including:
 
 ```bash
 MASK_CHANNEL="0"
@@ -101,7 +101,7 @@ GAMMA_VALUE="2.2"
 
 These values were tuned for one scanner and may need adjustment. A higher mask threshold selects more pixels as defects; excessive mask dilation or inpainting radius can smear texture.
 
-Set `KEEP_TMP="yes"` in `process-scan.sh` to retain masks and intermediate TIFFs for debugging.
+Set `KEEP_TMP="yes"` in `scripts/process-scan.sh` to retain masks and intermediate TIFFs for debugging.
 
 ## Scanner reset
 
@@ -120,3 +120,9 @@ The scripts discover the current `genesys:libusb:*` device automatically after a
 - Infrared can contain faint image detail, so a global threshold may select real content.
 - Dust removal and alignment parameters may require scanner-specific tuning.
 - This is not literal sensor RAW; SANE still performs calibration and device-level processing.
+
+## TODO:
+- Multiscan (scan n-times + averaging)
+- Smarter scratch detection
+- all settings in ini file for other scanners
+

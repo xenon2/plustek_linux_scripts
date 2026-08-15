@@ -2,6 +2,10 @@
 
 set -euo pipefail
 
+PROJECT_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPTS_DIR="$PROJECT_ROOT/scripts"
+cd "$PROJECT_ROOT"
+
 RAW_DIR="RAW"
 RESOLUTION="3600"
 IR_ENABLED="yes"
@@ -87,12 +91,12 @@ while true; do
 
     case "${answer:-N}" in
         N|n|"")
-            RESOLUTION="$RESOLUTION" IR_ENABLED="$IR_ENABLED" ./raw-scan.sh "$next_num"
-            IR_ENABLED="$IR_ENABLED" ./process-scan.sh "$next_num"
+            RESOLUTION="$RESOLUTION" IR_ENABLED="$IR_ENABLED" "$SCRIPTS_DIR/raw-scan.sh" "$next_num"
+            IR_ENABLED="$IR_ENABLED" "$SCRIPTS_DIR/process-scan.sh" "$next_num"
             next_num=$((next_num + 1))
             ;;
         P|p)
-            ./preview-scan.sh
+            "$SCRIPTS_DIR/preview-scan.sh"
             ;;
         S|s)
             configure
