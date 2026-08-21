@@ -16,7 +16,7 @@ p.add_argument("output")
 p.add_argument(
     "--threshold",
     type=int,
-    default=46000
+    default=45000
 )
 
 p.add_argument(

@@ -20,7 +20,8 @@ DONE_DIR="DONE"
 
 # detect_scratch.py
 MASK_CHANNEL="0"
-MASK_THRESHOLD="44000"
+MASK_THRESHOLD_LOW="45000"
+MASK_THRESHOLD_HIGH="53000"
 MASK_DILATE="0"
 
 # estimate_offset.py
@@ -75,8 +76,6 @@ mkdir -p "$TMP_DIR" "$DONE_DIR"
 RGB="$RAW_DIR/scan-${NUM}-rgb.tif"
 IR="$RAW_DIR/scan-${NUM}-ir.tif"
 
-MASK="$TMP_DIR/scan-${NUM}-mask.png"
-CLEAN="$TMP_DIR/scan-${NUM}-clean.tif"
 GAMMA="$TMP_DIR/scan-${NUM}-gamma.tif"
 FINAL="$DONE_DIR/scan-${NUM}.tif"
 
@@ -107,25 +106,9 @@ fi
 [[ -f "$IR" ]] || die "missing IR file: $IR"
 log "start rgb=$RGB ir=$IR"
 
-#
-# 1. detect mask from IR
-#
-
-log "1/5 detect defects"
-
-"$PYTHON" "$SCRIPT_DIR/detect_scratch.py" \
-    "$IR" \
-    "$MASK" \
-    --channel "$MASK_CHANNEL" \
-    --threshold "$MASK_THRESHOLD" \
-    --dilate "$MASK_DILATE"
-
-#
-# 2. estimate RGB/IR offset
-#
-
+# Estimate alignment once, then create conservative and aggressive variants.
 if [[ "$AUTO_OFFSET" == "yes" ]]; then
-    log "2/5 estimate RGB/IR offset"
+    log "1/2 estimate RGB/IR offset"
 
     read -r MASK_OFFSET_X MASK_OFFSET_Y < <(
         "$PYTHON" "$SCRIPT_DIR/estimate_offset.py" \
@@ -137,50 +120,53 @@ if [[ "$AUTO_OFFSET" == "yes" ]]; then
 
     log "offset=(${MASK_OFFSET_X},${MASK_OFFSET_Y}) source=automatic"
 else
-    log "2/5 use fixed offset=(${MASK_OFFSET_X},${MASK_OFFSET_Y})"
+    log "1/2 use fixed offset=(${MASK_OFFSET_X},${MASK_OFFSET_Y})"
 fi
 
-#
-# 3. inpaint
-#
+process_variant() {
+    local label="$1"
+    local threshold="$2"
+    local mask="$TMP_DIR/scan-${NUM}-${label}-mask.png"
+    local clean="$TMP_DIR/scan-${NUM}-${label}-clean.tif"
+    local gamma="$TMP_DIR/scan-${NUM}-${label}-gamma.tif"
+    local final="$DONE_DIR/scan-${NUM}-scratch-${label}.tif"
 
-log "3/5 inpaint"
+    log "2/2 variant=${label} threshold=${threshold}: detect defects"
+    "$PYTHON" "$SCRIPT_DIR/detect_scratch.py" \
+        "$IR" \
+        "$mask" \
+        --channel "$MASK_CHANNEL" \
+        --threshold "$threshold" \
+        --dilate "$MASK_DILATE"
 
-"$PYTHON" "$SCRIPT_DIR/inpaint.py" \
-    "$RGB" \
-    "$MASK" \
-    "$CLEAN" \
-    --dx "$MASK_OFFSET_X" \
-    --dy "$MASK_OFFSET_Y" \
-    --radius "$INPAINT_RADIUS" \
-    --dilate "$INPAINT_DILATE" \
-    --method "$INPAINT_METHOD"
+    log "variant=${label}: inpaint"
+    "$PYTHON" "$SCRIPT_DIR/inpaint.py" \
+        "$RGB" \
+        "$mask" \
+        "$clean" \
+        --dx "$MASK_OFFSET_X" \
+        --dy "$MASK_OFFSET_Y" \
+        --radius "$INPAINT_RADIUS" \
+        --dilate "$INPAINT_DILATE" \
+        --method "$INPAINT_METHOD"
 
-#
-# 4. gamma
-#
+    log "variant=${label}: apply gamma=${GAMMA_VALUE}"
+    "$PYTHON" "$SCRIPT_DIR/gamma22.py" \
+        "$clean" \
+        "$gamma" \
+        --gamma "$GAMMA_VALUE"
 
-log "4/5 apply gamma=${GAMMA_VALUE}"
+    log "variant=${label}: mirror horizontally"
+    tiffcrop -F horiz "$gamma" "$final"
 
-"$PYTHON" "$SCRIPT_DIR/gamma22.py" \
-    "$CLEAN" \
-    "$GAMMA" \
-    --gamma "$GAMMA_VALUE"
+    if [[ "$KEEP_TMP" != "yes" ]]; then
+        rm -f "$mask" "$clean" "$gamma"
+    fi
 
-#
-# 5. final horizontal mirror
-#
+    log "variant=${label} done output=$final"
+}
 
-log "5/5 mirror horizontally"
+process_variant "low" "$MASK_THRESHOLD_LOW"
+process_variant "high" "$MASK_THRESHOLD_HIGH"
 
-tiffcrop -F horiz "$GAMMA" "$FINAL"
-
-#
-# cleanup
-#
-
-if [[ "$KEEP_TMP" != "yes" ]]; then
-    rm -f "$MASK" "$CLEAN" "$GAMMA"
-fi
-
-log "done output=$FINAL temp=$([[ "$KEEP_TMP" == "yes" ]] && echo kept || echo removed) raw=preserved"
+log "done outputs=$DONE_DIR/scan-${NUM}-scratch-{low,high}.tif temp=$([[ "$KEEP_TMP" == "yes" ]] && echo kept || echo removed) raw=preserved"

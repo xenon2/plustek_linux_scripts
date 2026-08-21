@@ -76,7 +76,7 @@ With infrared enabled, processing consists of:
 
 Without infrared, only gamma and mirroring are applied.
 
-Scanner output is written to `RAW/`, temporary processing files to `TMP/`, and finished TIFFs to `DONE/`. Temporary files are removed after successful processing by default.
+Scanner output is written to `RAW/`, temporary processing files to `TMP/`, and finished TIFFs to `DONE/`. With infrared enabled, processing creates conservative `scan-NNN-scratch-low.tif` and aggressive `scan-NNN-scratch-high.tif` variants. RGB-only processing creates `scan-NNN.tif`. Temporary files are removed after successful processing by default.
 
 The scanner's output is horizontally mirrored, so mirroring is applied only to the finished image. Files in `RAW/` remain untouched.
 
@@ -86,7 +86,8 @@ Scanner geometry and defaults are configured near the top of `scripts/raw-scan.s
 
 ```bash
 MASK_CHANNEL="0"
-MASK_THRESHOLD="44000"
+MASK_THRESHOLD_LOW="45000"
+MASK_THRESHOLD_HIGH="53000"
 MASK_DILATE="0"
 
 AUTO_OFFSET="yes"
@@ -99,7 +100,7 @@ INPAINT_METHOD="telea"
 GAMMA_VALUE="2.2"
 ```
 
-These values were tuned for one scanner and may need adjustment. A higher mask threshold selects more pixels as defects; excessive mask dilation or inpainting radius can smear texture.
+These values were tuned for one scanner and may need adjustment. The low threshold produces a conservative repair and the high threshold produces a more aggressive repair. A higher mask threshold selects more pixels as defects; excessive mask dilation or inpainting radius can smear texture.
 
 Set `KEEP_TMP="yes"` in `scripts/process-scan.sh` to retain masks and intermediate TIFFs for debugging.
 
