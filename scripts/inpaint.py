@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
 import argparse
+from pathlib import Path
+
 import cv2
 import numpy as np
 
@@ -24,6 +26,10 @@ def main():
 
     p.add_argument("--radius", type=float, default=3.0)
     p.add_argument("--dilate", type=int, default=1)
+    p.add_argument(
+        "--repaired-percent-file",
+        help="Write the percentage of pixels repaired to this file"
+    )
 
     p.add_argument(
         "--method",
@@ -120,10 +126,23 @@ def main():
     if not cv2.imwrite(args.output, output):
         fail(COMPONENT, f"cannot write output: {args.output}")
 
+    repaired_percent = 100 * masked / mask.size
+    if args.repaired_percent_file:
+        try:
+            Path(args.repaired_percent_file).write_text(
+                f"{repaired_percent:.6f}\n",
+                encoding="ascii"
+            )
+        except OSError as exc:
+            fail(
+                COMPONENT,
+                f"cannot write repaired percentage: {args.repaired_percent_file}: {exc}"
+            )
+
     log(
         COMPONENT,
         f"output={args.output} repaired={masked}/{mask.size} "
-        f"({100 * masked / mask.size:.3f}%)"
+        f"({repaired_percent:.3f}%)"
     )
 
 

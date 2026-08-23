@@ -6,38 +6,8 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname -- "$SCRIPT_DIR")"
 cd "$PROJECT_ROOT"
 
-#
-# =========================
-# TWEAKABLE PARAMETERS
-# =========================
-#
-
-SCANIMAGE="/usr/local/bin/scanimage"
-RAW_DIR="RAW"
-
-SOURCE_RGB="Transparency Adapter"
-SOURCE_IR="Transparency Adapter Infrared"
-
-MODE_RGB="Color"
-MODE_IR="Color"
-
-DEPTH="16"
-# May be overridden by scan-loop.sh or the caller.
-RESOLUTION="${RESOLUTION:-3600}"
-IR_ENABLED="${IR_ENABLED:-yes}"
-
-LEFT_MM="1"
-TOP_MM="0"
-WIDTH_MM="35"
-HEIGHT_MM="24"
-
-CUSTOM_GAMMA="no"
-
-#
-# =========================
-# END PARAMETERS
-# =========================
-#
+# shellcheck source=load-config.sh
+source "$SCRIPT_DIR/load-config.sh"
 
 print_log() {
     if [[ -t 1 && -z "${NO_COLOR:-}" ]]; then
@@ -54,7 +24,7 @@ fi
 
 if [[ "$1" == "--preview" ]]; then
     TAG="preview scan"
-    RESOLUTION="900"
+    RESOLUTION="$PREVIEW_RESOLUTION"
     IR_ENABLED="no"
     RGB="TMP/preview-raw.tif"
     IR=""
@@ -76,6 +46,23 @@ fi
 
 log() { print_log "$TAG" "$*"; }
 die() { log "ERROR: $*" >&2; exit 1; }
+
+RGB_TMP=""
+IR_TMP=""
+cleanup() {
+    rm -f -- "$RGB_TMP" "$IR_TMP"
+}
+publish() {
+    local temporary=$1
+    local destination=$2
+
+    [[ -s "$temporary" ]] || die "scan produced no data: $destination"
+    # -n prevents a concurrent scan from replacing an output created after the
+    # initial existence check. A successful move removes the temporary file.
+    mv -n -- "$temporary" "$destination"
+    [[ ! -e "$temporary" ]] || die "output appeared while scanning: $destination"
+}
+trap cleanup EXIT
 trap 'rc=$?; log "ERROR: command failed (exit=$rc)" >&2; exit "$rc"' ERR
 
 mkdir -p "$RAW_DIR" "$(dirname "$RGB")"
@@ -87,9 +74,18 @@ DEVICE="$("$SCANIMAGE" -L | sed -n "s/.*device \`\([^']*\)'.*/\1/p" | head -1)"
 
 if [[ "$1" == "--preview" ]]; then
     rm -f "$RGB"
-elif [[ -e "$RGB" || ( "$IR_ENABLED" == "yes" && -e "$IR" ) ]]; then
+elif [[ -e "$RGB" || -e "$IR" ]]; then
     die "output already exists for scan $NUM"
 fi
+
+# Scan into the destination directory so publishing with mv is atomic. Failed
+# scans are removed by the EXIT trap and never become visible in RAW/.
+RGB_TMP="${RGB%.tif}.tmp.$$.tif"
+if [[ "$IR_ENABLED" == "yes" ]]; then
+    IR_TMP="${IR%.tif}.tmp.$$.tif"
+fi
+[[ ! -e "$RGB_TMP" && ( -z "$IR_TMP" || ! -e "$IR_TMP" ) ]] || \
+    die "temporary scan output already exists"
 
 log "start device=$DEVICE resolution=${RESOLUTION}dpi depth=${DEPTH}-bit area=${WIDTH_MM}x${HEIGHT_MM}mm ir=$IR_ENABLED"
 log "$([[ "$IR_ENABLED" == "yes" ]] && echo 1/2 || echo 1/1) RGB -> $RGB"
@@ -106,7 +102,7 @@ log "$([[ "$IR_ENABLED" == "yes" ]] && echo 1/2 || echo 1/1) RGB -> $RGB"
     -y "$HEIGHT_MM" \
     --custom-gamma="$CUSTOM_GAMMA" \
     --format=tiff \
-    -o "$RGB"
+    -o "$RGB_TMP"
 
 if [[ "$IR_ENABLED" == "yes" ]]; then
     log "2/2 IR -> $IR"
@@ -123,9 +119,15 @@ if [[ "$IR_ENABLED" == "yes" ]]; then
         -y "$HEIGHT_MM" \
         --custom-gamma="$CUSTOM_GAMMA" \
         --format=tiff \
-        -o "$IR"
+        -o "$IR_TMP"
 
+    publish "$RGB_TMP" "$RGB"
+    RGB_TMP=""
+    publish "$IR_TMP" "$IR"
+    IR_TMP=""
     log "done rgb=$RGB ir=$IR"
 else
+    publish "$RGB_TMP" "$RGB"
+    RGB_TMP=""
     log "done rgb=$RGB ir=disabled"
 fi

@@ -6,9 +6,8 @@ PROJECT_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPTS_DIR="$PROJECT_ROOT/scripts"
 cd "$PROJECT_ROOT"
 
-RAW_DIR="RAW"
-RESOLUTION="3600"
-IR_ENABLED="yes"
+# shellcheck source=scripts/load-config.sh
+source "$SCRIPTS_DIR/load-config.sh"
 
 if [[ -t 1 && -z "${NO_COLOR:-}" ]]; then
     GREEN='\033[32m'
@@ -27,8 +26,8 @@ configure() {
 
     while true; do
         ir_label="$([[ "$IR_ENABLED" == "yes" ]] && echo on || echo off)"
-        printf '\n%b[setup]%b resolution=%s dpi, IR=%s — [1] 3600, [2] 7200, [I] toggle IR, [Enter] done: %b' \
-            "$GREEN" "$WHITE" "$RESOLUTION" "$ir_label" "$RESET"
+        printf '\n%b[setup]%b resolution=%s dpi, IR=%s, scratch=%s — [1] 3600, [2] 7200, [I] toggle IR, [L] low, [H] high, [Enter] done: %b' \
+            "$GREEN" "$WHITE" "$RESOLUTION" "$ir_label" "$SCRATCH_LEVEL" "$RESET"
         read -r answer
 
         case "$answer" in
@@ -49,11 +48,19 @@ configure() {
                     log "IR enabled"
                 fi
                 ;;
+            L|l)
+                SCRATCH_LEVEL="low"
+                log "scratch level set to low"
+                ;;
+            H|h)
+                SCRATCH_LEVEL="high"
+                log "scratch level set to high"
+                ;;
             "")
                 return
                 ;;
             *)
-                log "unknown choice; use 1/3600, 2/7200, I or Enter"
+                log "unknown choice; use 1/3600, 2/7200, I, L, H or Enter"
                 ;;
         esac
     done
@@ -84,7 +91,7 @@ next_num=$((last_num + 1))
 while true; do
     num=$(printf "%03d" "$next_num")
 
-    ir_label="$([[ "$IR_ENABLED" == "yes" ]] && echo IR || echo RGB-only)"
+    ir_label="$([[ "$IR_ENABLED" == "yes" ]] && echo "IR, scratch $SCRATCH_LEVEL" || echo RGB-only)"
     printf '\n%b[loop]%b frame %s (%s dpi, %s) — [Enter/N] scan and process, [P] preview, [S] setup, [Q] quit: %b' \
         "$GREEN" "$WHITE" "$num" "$RESOLUTION" "$ir_label" "$RESET"
     read -r answer
@@ -92,7 +99,7 @@ while true; do
     case "${answer:-N}" in
         N|n|"")
             RESOLUTION="$RESOLUTION" IR_ENABLED="$IR_ENABLED" "$SCRIPTS_DIR/raw-scan.sh" "$next_num"
-            IR_ENABLED="$IR_ENABLED" "$SCRIPTS_DIR/process-scan.sh" "$next_num"
+            IR_ENABLED="$IR_ENABLED" SCRATCH_LEVEL="$SCRATCH_LEVEL" "$SCRIPTS_DIR/process-scan.sh" "$next_num"
             next_num=$((next_num + 1))
             ;;
         P|p)

@@ -43,7 +43,7 @@ Available actions:
 
 - **Enter / N** — scan and process the next frame
 - **P** — create a quick 900 dpi RGB preview
-- **S** — select 3600 or 7200 dpi and enable or disable infrared
+- **S** — select 3600 or 7200 dpi, enable or disable infrared, and choose low or high scratch removal
 - **Q** — quit
 
 Disable infrared for black-and-white film. The next frame number is determined from existing scans in `RAW/`.
@@ -76,33 +76,28 @@ With infrared enabled, processing consists of:
 
 Without infrared, only gamma and mirroring are applied.
 
-Scanner output is written to `RAW/`, temporary processing files to `TMP/`, and finished TIFFs to `DONE/`. With infrared enabled, processing creates conservative `scan-NNN-scratch-low.tif` and aggressive `scan-NNN-scratch-high.tif` variants. RGB-only processing creates `scan-NNN.tif`. Temporary files are removed after successful processing by default.
+Scanner output is written to `RAW/`, temporary processing files to `TMP/`, and finished TIFFs to `DONE/`. With infrared enabled, processing creates the selected conservative `scan-NNN-scratch-low.tif` or aggressive `scan-NNN-scratch-high.tif` variant. The default scratch level is high and can be changed in the interactive setup. If the high variant inpaints more than 5% of the image, the pipeline warns and also creates the conservative low variant from the same RGB and infrared scans. RGB-only processing creates `scan-NNN.tif`. Temporary files are removed after successful processing by default.
+
+RAW scans and finished images are written to temporary files first and published with an atomic rename only after the command succeeds. Existing files in `RAW/` and `DONE/` are never overwritten; choose another frame number or move the existing output before retrying. An interrupted raw scan is discarded. If processing fails, its intermediate files remain in `TMP/` for diagnosis, while an incomplete final file is removed automatically.
 
 The scanner's output is horizontally mirrored, so mirroring is applied only to the finished image. Files in `RAW/` remain untouched.
 
 ## Configuration
 
-Scanner geometry and defaults are configured near the top of `scripts/raw-scan.sh`. Processing parameters are configured near the top of `scripts/process-scan.sh`, including:
+All user-adjustable settings are centralized in `config.ini`, where every setting has a comment describing its purpose. It contains output paths, dependency versions, scanner geometry, scan defaults, scratch detection, alignment, inpainting, gamma, cleanup, and preview settings.
+
+Edit `config.ini` to change persistent defaults. An environment variable overrides the corresponding default for one command, for example:
 
 ```bash
-MASK_CHANNEL="0"
-MASK_THRESHOLD_LOW="45000"
-MASK_THRESHOLD_HIGH="53000"
-MASK_DILATE="0"
-
-AUTO_OFFSET="yes"
-OFFSET_MAX_SHIFT="100"
-
-INPAINT_RADIUS="2"
-INPAINT_DILATE="1"
-INPAINT_METHOD="telea"
-
-GAMMA_VALUE="2.2"
+RESOLUTION=7200 IR_ENABLED=no ./scripts/raw-scan.sh 1
+SCRATCH_LEVEL=low KEEP_TMP=yes ./scripts/process-scan.sh 1
 ```
 
-These values were tuned for one scanner and may need adjustment. The low threshold produces a conservative repair and the high threshold produces a more aggressive repair. A higher mask threshold selects more pixels as defects; excessive mask dilation or inpainting radius can smear texture.
+For manual processing, `SCRATCH_LEVEL` accepts `low` or `high` and defaults to high.
 
-Set `KEEP_TMP="yes"` in `scripts/process-scan.sh` to retain masks and intermediate TIFFs for debugging.
+These values were tuned for one scanner and may need adjustment. Different film stocks can require different low and high scratch-detection thresholds, so experiment with both settings to find suitable values for your film. Because infrared scans can contain image detail, a threshold that is too aggressive may classify normal parts of the image as scratches and inpaint them. The low threshold produces a conservative repair and the high threshold produces a more aggressive repair. A higher mask threshold selects more pixels as defects; excessive mask dilation or inpainting radius can smear texture. `REPAIR_WARNING_PERCENT` controls when high repair coverage triggers a warning and an additional low variant.
+
+Set `KEEP_TMP` to `yes` in `config.ini`, or override it for one command, to retain masks and intermediate TIFFs for debugging.
 
 ## Scanner reset
 

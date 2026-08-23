@@ -6,13 +6,10 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname -- "$SCRIPT_DIR")"
 cd "$PROJECT_ROOT"
 
-PYTHON=".venv/bin/python"
-PREVIEW_DIR="TMP"
+# shellcheck source=load-config.sh
+source "$SCRIPT_DIR/load-config.sh"
 
-GAMMA_VALUE="2.2"
-PREVIEW_EXPOSURE="0.0"
-BLACK_PERCENTILE="1.0"
-WHITE_PERCENTILE="99.0"
+PREVIEW_DIR="$TMP_DIR"
 
 log() {
     if [[ -t 1 && -z "${NO_COLOR:-}" ]]; then

@@ -6,9 +6,10 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname -- "$SCRIPT_DIR")"
 cd "$PROJECT_ROOT"
 
-VENV=".venv"
+# shellcheck source=load-config.sh
+source "$SCRIPT_DIR/load-config.sh"
+
 BUILD_VENV="${VENV}.setup.$$"
-SCANIMAGE="/usr/local/bin/scanimage"
 
 log() {
     if [[ -t 1 && -z "${NO_COLOR:-}" ]]; then
@@ -70,7 +71,7 @@ fi
 
 log "install Python dependencies"
 "$BUILD_VENV/bin/python" -m pip install --quiet --upgrade pip
-"$BUILD_VENV/bin/python" -m pip install --quiet "numpy<2" "opencv-python==4.11.0.86"
+"$BUILD_VENV/bin/python" -m pip install --quiet "$NUMPY_REQUIREMENT" "$OPENCV_REQUIREMENT"
 
 log "verify Python dependencies and image codecs"
 versions=$("$BUILD_VENV/bin/python" <<'PY'
