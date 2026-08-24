@@ -9,6 +9,13 @@ cd "$PROJECT_ROOT"
 # shellcheck source=scripts/load-config.sh
 source "$SCRIPTS_DIR/load-config.sh"
 
+if [[ ! "$MULTISCAN_COUNT" =~ ^[0-9]+$ ]] || \
+    (( 10#$MULTISCAN_COUNT < 1 || 10#$MULTISCAN_COUNT > 16 )); then
+    printf '[loop] ERROR: MULTISCAN_COUNT must be from 1 through 16\n' >&2
+    exit 1
+fi
+MULTISCAN_COUNT=$((10#$MULTISCAN_COUNT))
+
 if [[ -t 1 && -z "${NO_COLOR:-}" ]]; then
     GREEN='\033[32m'
     WHITE='\033[37m'
@@ -22,12 +29,12 @@ fi
 log() { printf '%b[loop]%b %s%b\n' "$GREEN" "$WHITE" "$*" "$RESET"; }
 
 configure() {
-    local answer ir_label
+    local answer ir_label multiscan_answer
 
     while true; do
         ir_label="$([[ "$IR_ENABLED" == "yes" ]] && echo on || echo off)"
-        printf '\n%b[setup]%b resolution=%s dpi, IR=%s, scratch=%s — [1] 3600, [2] 7200, [I] toggle IR, [L] low, [H] high, [Enter] done: %b' \
-            "$GREEN" "$WHITE" "$RESOLUTION" "$ir_label" "$SCRATCH_LEVEL" "$RESET"
+        printf '\n%b[setup]%b resolution=%s dpi, RGB=%sx, IR=%s, scratch=%s — [1] 3600, [2] 7200, [M] multiscan, [I] toggle IR, [L] low, [H] high, [Enter] done: %b' \
+            "$GREEN" "$WHITE" "$RESOLUTION" "$MULTISCAN_COUNT" "$ir_label" "$SCRATCH_LEVEL" "$RESET"
         read -r answer
 
         case "$answer" in
@@ -38,6 +45,17 @@ configure() {
             2|7200)
                 RESOLUTION="7200"
                 log "resolution set to ${RESOLUTION} dpi"
+                ;;
+            M|m)
+                printf '%b[setup]%b RGB captures [1-16]: %b' "$GREEN" "$WHITE" "$RESET"
+                read -r multiscan_answer
+                if [[ "$multiscan_answer" =~ ^[0-9]+$ ]] && \
+                    (( 10#$multiscan_answer >= 1 && 10#$multiscan_answer <= 16 )); then
+                    MULTISCAN_COUNT=$((10#$multiscan_answer))
+                    log "RGB multiscan set to ${MULTISCAN_COUNT}x"
+                else
+                    log "invalid RGB capture count; enter a number from 1 through 16"
+                fi
                 ;;
             I|i)
                 if [[ "$IR_ENABLED" == "yes" ]]; then
@@ -60,7 +78,7 @@ configure() {
                 return
                 ;;
             *)
-                log "unknown choice; use 1/3600, 2/7200, I, L, H or Enter"
+                log "unknown choice; use 1/3600, 2/7200, M, I, L, H or Enter"
                 ;;
         esac
     done
@@ -92,14 +110,16 @@ while true; do
     num=$(printf "%03d" "$next_num")
 
     ir_label="$([[ "$IR_ENABLED" == "yes" ]] && echo "IR, scratch $SCRATCH_LEVEL" || echo RGB-only)"
-    printf '\n%b[loop]%b frame %s (%s dpi, %s) — [Enter/N] scan and process, [P] preview, [S] setup, [Q] quit: %b' \
-        "$GREEN" "$WHITE" "$num" "$RESOLUTION" "$ir_label" "$RESET"
+    printf '\n%b[loop]%b frame %s (%s dpi, RGB %sx, %s) — [Enter/N] scan and process, [P] preview, [S] setup, [Q] quit: %b' \
+        "$GREEN" "$WHITE" "$num" "$RESOLUTION" "$MULTISCAN_COUNT" "$ir_label" "$RESET"
     read -r answer
 
     case "${answer:-N}" in
         N|n|"")
-            RESOLUTION="$RESOLUTION" IR_ENABLED="$IR_ENABLED" "$SCRIPTS_DIR/raw-scan.sh" "$next_num"
-            IR_ENABLED="$IR_ENABLED" SCRATCH_LEVEL="$SCRATCH_LEVEL" "$SCRIPTS_DIR/process-scan.sh" "$next_num"
+            RESOLUTION="$RESOLUTION" IR_ENABLED="$IR_ENABLED" MULTISCAN_COUNT="$MULTISCAN_COUNT" \
+                "$SCRIPTS_DIR/raw-scan.sh" "$next_num"
+            IR_ENABLED="$IR_ENABLED" SCRATCH_LEVEL="$SCRATCH_LEVEL" MULTISCAN_COUNT="$MULTISCAN_COUNT" \
+                "$SCRIPTS_DIR/process-scan.sh" "$next_num"
             next_num=$((next_num + 1))
             ;;
         P|p)

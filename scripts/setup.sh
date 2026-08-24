@@ -71,7 +71,8 @@ fi
 
 log "install Python dependencies"
 "$BUILD_VENV/bin/python" -m pip install --quiet --upgrade pip
-"$BUILD_VENV/bin/python" -m pip install --quiet "$NUMPY_REQUIREMENT" "$OPENCV_REQUIREMENT"
+"$BUILD_VENV/bin/python" -m pip install --quiet \
+    "$NUMPY_REQUIREMENT" "$OPENCV_REQUIREMENT" "$TIFFFILE_REQUIREMENT"
 
 log "verify Python dependencies and image codecs"
 versions=$("$BUILD_VENV/bin/python" <<'PY'
@@ -80,6 +81,7 @@ import tempfile
 
 import cv2
 import numpy as np
+import tifffile
 
 required = ("inpaint", "phaseCorrelate", "Sobel", "warpAffine")
 missing = [name for name in required if not hasattr(cv2, name)]
@@ -93,11 +95,19 @@ with tempfile.TemporaryDirectory() as directory:
         if not cv2.imwrite(path, image16) or cv2.imread(path, cv2.IMREAD_UNCHANGED) is None:
             raise RuntimeError(f"OpenCV {extension.upper()} codec is unavailable")
 
+    mapped_path = os.path.join(directory, "mapped.tif")
+    mapped = tifffile.memmap(mapped_path, shape=image16.shape, dtype=image16.dtype, photometric="rgb")
+    mapped[:] = image16
+    mapped.flush()
+    del mapped
+    if tifffile.memmap(mapped_path).shape != image16.shape:
+        raise RuntimeError("TIFF memory mapping is unavailable")
+
     jpeg = os.path.join(directory, "test.jpg")
     if not cv2.imwrite(jpeg, image16.astype(np.uint8)):
         raise RuntimeError("OpenCV JPEG codec is unavailable")
 
-print(f"NumPy={np.__version__} OpenCV={cv2.__version__}")
+print(f"NumPy={np.__version__} OpenCV={cv2.__version__} TIFFFile={tifffile.__version__}")
 PY
 )
 
