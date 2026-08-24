@@ -6,7 +6,7 @@ Linux workflow for scanning film with a **Plustek OpticFilm 7500i** through SANE
 
 ```text
                                ┌──────────────────────────┐
-Film ──► OpticFilm scanner ───►│ 1–16 linear RGB captures│──► RAW/
+Film ──► OpticFilm scanner ───►│ 1–16 linear RGB captures │──► RAW/
           │                    └────────────┬─────────────┘
           │                                 │
           │                       capture count > 1?
@@ -23,7 +23,7 @@ Film ──► OpticFilm scanner ───►│ 1–16 linear RGB captures│�
           └────────► IR capture ──► estimate RGB/IR offset        │
                              │             │                      │
                              ▼             ▼                      │
-                       detect defects ──► inpaint RGB              │
+                       detect defects ──► inpaint RGB             │
                                            │                      │
                                            └──────────┬───────────┘
                                                       ▼
