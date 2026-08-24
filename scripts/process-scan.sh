@@ -158,7 +158,16 @@ fi
 process_variant() {
     local label="$1"
     local threshold="$2"
+    local local_threshold="$MASK_LOCAL_THRESHOLD_LOW"
+    local inpaint_radius="$INPAINT_RADIUS"
+    local inpaint_dilate="$INPAINT_DILATE"
     local mask="$TMP_DIR/scan-${NUM}-${label}-mask.png"
+
+    if [[ "$label" == "high" ]]; then
+        local_threshold="$MASK_LOCAL_THRESHOLD_HIGH"
+        inpaint_radius="$INPAINT_RADIUS_HIGH"
+        inpaint_dilate="$INPAINT_DILATE_HIGH"
+    fi
     local clean="$TMP_DIR/scan-${NUM}-${label}-clean.tif"
     local gamma="$TMP_DIR/scan-${NUM}-${label}-gamma.tif"
     local repaired_percent_file="$TMP_DIR/scan-${NUM}-${label}-repaired-percent.txt"
@@ -170,7 +179,10 @@ process_variant() {
         "$mask" \
         --channel "$MASK_CHANNEL" \
         --threshold "$threshold" \
-        --dilate "$MASK_DILATE"
+        --dilate "$MASK_DILATE" \
+        --local-radius "$MASK_LOCAL_RADIUS" \
+        --local-threshold "$local_threshold" \
+        --local-min-area "$MASK_LOCAL_MIN_AREA"
 
     log "variant=${label}: inpaint"
     "$PYTHON" "$SCRIPT_DIR/inpaint.py" \
@@ -179,8 +191,8 @@ process_variant() {
         "$clean" \
         --dx "$MASK_OFFSET_X" \
         --dy "$MASK_OFFSET_Y" \
-        --radius "$INPAINT_RADIUS" \
-        --dilate "$INPAINT_DILATE" \
+        --radius "$inpaint_radius" \
+        --dilate "$inpaint_dilate" \
         --method "$INPAINT_METHOD" \
         --repaired-percent-file "$repaired_percent_file"
 
