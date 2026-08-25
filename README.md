@@ -96,6 +96,8 @@ RESOLUTION=7200 MULTISCAN_COUNT=4 IR_ENABLED=no ./scripts/raw-scan.sh 1
 SCRATCH_LEVEL=low KEEP_TMP=yes ./scripts/process-scan.sh 1
 ```
 
+> **Plustek OpticFilm 7500i note:** Using multiscan with at least two RGB captures (`MULTISCAN_COUNT=2` or higher) dramatically improves color response in testing, for reasons that are not yet understood. Prefer multiscan over a single capture when scan time and storage permit.
+
 Scratch thresholds are scanner- and film-dependent. Start with `low`; aggressive thresholds, dilation, or inpainting can remove real image detail.
 
 ## Scanner reset
