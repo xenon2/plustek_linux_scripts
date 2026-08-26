@@ -55,6 +55,8 @@ Insert film shiny/base side up and emulsion side down, then run:
 ./scan-loop.sh
 ```
 
+At startup, the loop checks the scanner, command-line tools, Python packages, pipeline scripts, and writable output directories. Each available requirement is marked `[OK]`; the loop exits before scanning if a requirement is missing.
+
 Controls:
 
 - **Enter / N** — scan and process the next frame

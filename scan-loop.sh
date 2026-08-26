@@ -9,13 +9,6 @@ cd "$PROJECT_ROOT"
 # shellcheck source=scripts/load-config.sh
 source "$SCRIPTS_DIR/load-config.sh"
 
-if [[ ! "$MULTISCAN_COUNT" =~ ^[0-9]+$ ]] || \
-    (( 10#$MULTISCAN_COUNT < 1 || 10#$MULTISCAN_COUNT > 16 )); then
-    printf '[loop] ERROR: MULTISCAN_COUNT must be from 1 through 16\n' >&2
-    exit 1
-fi
-MULTISCAN_COUNT=$((10#$MULTISCAN_COUNT))
-
 if [[ -t 1 && -z "${NO_COLOR:-}" ]]; then
     GREEN='\033[32m'
     WHITE='\033[37m'
@@ -27,6 +20,9 @@ else
 fi
 
 log() { printf '%b[loop]%b %s%b\n' "$GREEN" "$WHITE" "$*" "$RESET"; }
+
+"$SCRIPTS_DIR/preflight.sh"
+MULTISCAN_COUNT=$((10#$MULTISCAN_COUNT))
 
 configure() {
     local answer ir_label multiscan_answer
