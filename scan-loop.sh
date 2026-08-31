@@ -102,11 +102,37 @@ shopt -u nullglob
 
 next_num=$((last_num + 1))
 
+delete_all_files() {
+    local first_confirmation second_confirmation directory
+
+    printf '\n%b[delete]%b Permanently delete ALL files in %s, %s, and %s? [y/N]: %b' \
+        "$GREEN" "$WHITE" "$RAW_DIR" "$TMP_DIR" "$DONE_DIR" "$RESET"
+    read -r first_confirmation
+    if [[ "$first_confirmation" != "y" && "$first_confirmation" != "Y" ]]; then
+        log "delete cancelled"
+        return
+    fi
+
+    printf '%b[delete]%b Are you absolutely sure? This cannot be undone. [y/N]: %b' \
+        "$GREEN" "$WHITE" "$RESET"
+    read -r second_confirmation
+    if [[ "$second_confirmation" != "y" && "$second_confirmation" != "Y" ]]; then
+        log "delete cancelled"
+        return
+    fi
+
+    for directory in "$RAW_DIR" "$TMP_DIR" "$DONE_DIR"; do
+        find -- "$directory" -mindepth 1 \( -type f -o -type l \) -delete
+    done
+    next_num=1
+    log "deleted all files in $RAW_DIR, $TMP_DIR, and $DONE_DIR"
+}
+
 while true; do
     num=$(printf "%03d" "$next_num")
 
     ir_label="$([[ "$IR_ENABLED" == "yes" ]] && echo "IR, scratch $SCRATCH_LEVEL" || echo RGB-only)"
-    printf '\n%b[loop]%b frame %s (%s dpi, RGB %sx, %s) — [Enter/N] scan and process, [P] preview, [S] setup, [Q] quit: %b' \
+    printf '\n%b[loop]%b frame %s (%s dpi, RGB %sx, %s) — [Enter/N] scan and process, [P] preview, [S] setup, [D] delete all files, [Q] quit: %b' \
         "$GREEN" "$WHITE" "$num" "$RESOLUTION" "$MULTISCAN_COUNT" "$ir_label" "$RESET"
     read -r answer
 
@@ -124,12 +150,15 @@ while true; do
         S|s)
             configure
             ;;
+        D|d)
+            delete_all_files
+            ;;
         Q|q)
             log "done"
             exit 0
             ;;
         *)
-            log "unknown choice; use Enter/N, P, S or Q"
+            log "unknown choice; use Enter/N, P, S, D or Q"
             ;;
     esac
 done
