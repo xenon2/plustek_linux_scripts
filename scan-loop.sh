@@ -132,7 +132,7 @@ while true; do
     num=$(printf "%03d" "$next_num")
 
     ir_label="$([[ "$IR_ENABLED" == "yes" ]] && echo "IR, scratch $SCRATCH_LEVEL" || echo RGB-only)"
-    printf '\n%b[loop]%b frame %s (%s dpi, RGB %sx, %s) — [Enter/N] scan and process, [P] preview, [S] setup, [D] delete all files, [Q] quit: %b' \
+    printf '\n%b[loop]%b frame %s (%s dpi, RGB %sx, %s) — [Enter/N] scan and process, [P]review, [S]etup, [D]elete all, [Q]uit: %b' \
         "$GREEN" "$WHITE" "$num" "$RESOLUTION" "$MULTISCAN_COUNT" "$ir_label" "$RESET"
     read -r answer
 
