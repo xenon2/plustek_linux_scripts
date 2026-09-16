@@ -74,6 +74,7 @@ if [[ -f "$CAPTURE_MANIFEST" ]]; then
     [[ "$(manifest_value STATUS || true)" == "complete" ]] || \
         die "capture is incomplete: $CAPTURE_MANIFEST"
     MULTISCAN_COUNT="$(manifest_value MULTISCAN_COUNT || true)"
+    IR_ENABLED="$(manifest_value IR_ENABLED || true)"
 fi
 
 #
